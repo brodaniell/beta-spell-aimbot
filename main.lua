@@ -26,22 +26,23 @@ end
 getgenv().render_loop_stepped_name = getgenv().renderloop_stepped_name or randomString(math.random(15, 35))
 getgenv().update_loop_stepped_name = getgenv().update_loop_stepped_name or randomString(math.random(15, 35))
 getgenv().iniuria = true
+getgenv().mouse_con = nil
 
 -- services
 local Players = game:GetService('Players')
 local RunService = game:GetService('RunService')
-local Teams = game:GetService('Teams')
 local UserInputService = game:GetService('UserInputService')
-local HttpService = game:GetService('HttpService')
 
 -- values
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
 local DummyPart = Instance.new('Part', nil)
-local ignoredInstances = {}
+local IgnoredInstances = {}
 local LastTick = 0
 local StartAim = false
+local Delay = 0.1
+local Debounce = false
 
 -- raycast
 local RaycastParam = RaycastParams.new()
@@ -50,8 +51,7 @@ RaycastParam.IgnoreWater = true
 
 -- drawing lib objects
 local aimingDraw = {
-    fovCircle = nil,
-    line = nil
+    fovCircle = nil
 }
 
 local espDraw = {
@@ -84,8 +84,8 @@ local LegitTabbox1 = LegitTab:AddLeftGroupbox('Aimbot')
 LegitTabbox1:AddSlider('MaxDistance', { Text = "Max Distance", Suffix = "m", Default = 5000, Min = 0, Max = 5000, Rounding = 0})
 LegitTabbox1:AddSlider('AimbotFOV', { Text = "Aimbot FOV", Suffix = "m", Default = 10, Min = 0, Max = 10, Rounding = 0})
 LegitTabbox1:AddDivider()
-LegitTabbox1:AddSlider('AimbotAdj', { Text = "Aim Adjustment", Suffix = "%", Default = 50, Min = 1, Max = 100, Rounding = 0})
-LegitTabbox1:AddSlider('AimbotAdjStr', { Text = "Aim Adjustment Strength", Suffix = "x", Default = 5, Min = 1, Max = 5, Rounding = 0})
+LegitTabbox1:AddSlider('AimbotAdj', { Text = "Aim Adjustment", Suffix = "%", Default = 50, Min = 0, Max = 100, Rounding = 0})
+LegitTabbox1:AddSlider('AimbotAdjStr', { Text = "Aim Adjustment Strength", Suffix = "x", Default = 5, Min = 0, Max = 5, Rounding = 0})
 LegitTabbox1:AddDivider()
 LegitTabbox1:AddSlider('AimbotOffsetX', { Text = "Aimbot Offset X", Default = 0, Min = -10, Max = 10, Rounding = 0})
 LegitTabbox1:AddSlider('AimbotOffsetY', { Text = "Aimbot Offset Y", Default = 0, Min = -10, Max = 10, Rounding = 0})
@@ -162,13 +162,13 @@ local function toViewportPoint(v3: Vector3)
     return Vector3.new(screenPos.X, screenPos.Y, screenPos.Z), visible
 end
 
-local function canHit(originPosition, target)
+local function canHit(originPosition: Vector3, target: Vector3)
     if not Toggles.VCheck.Value then
         return true
     end
 
     local ignoreList = {Camera, getCharacter(LocalPlayer)}
-    for _, v in pairs(ignoredInstances) do
+    for _, v in pairs(IgnoredInstances) do
         ignoreList[#ignoreList + 1] = v
     end
 
@@ -177,11 +177,11 @@ local function canHit(originPosition, target)
     local resultPart = ((raycast and raycast.Instance) or DummyPart)
     if resultPart ~= DummyPart then
         if resultPart.Transparency >= 0.3 then -- ignore low transparency
-            ignoredInstances[#ignoredInstances + 1] = resultPart
+        IgnoredInstances[#IgnoredInstances + 1] = resultPart
         end
 
         if resultPart.Material == Enum.Material.Glass then -- ignore glass
-            ignoredInstances[#ignoredInstances + 1] = resultPart
+        IgnoredInstances[#IgnoredInstances + 1] = resultPart
         end
     end
 
@@ -223,17 +223,17 @@ local function getClosestObjectFromMouse()
 	local closest = {Distance = Options.MaxDistance.Value, Character = nil}
 	local mousePos = UserInputService:GetMouseLocation()
 
-    for _, hum in pairs(game:GetService("Workspace"):GetDescendants()) do
-        if not hum:IsA("Humanoid") then continue end
-        local character = hum.Parent
-        local hRP = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 1000)
+    for _, char in pairs(game:GetService("Workspace"):GetChildren()) do
+        if not (char or char:IsA("Model")) then continue end
+        if char.Name:match(LocalPlayer.Character.Name) then continue end
+        local hRP = char:FindFirstChild("HumanoidRootPart")
         if hRP then
             local position, _ = toViewportPoint(hRP.Position)
             local distance = (mousePos - Vector2.new(position.X, position.Y)).Magnitude
-            if not character or distance > Options.MaxDistance.Value or
+            if distance > Options.MaxDistance.Value or
                 (closest.Distance and distance >= closest.Distance) then continue
             end
-            closest = {Distance = distance, Character = character}
+            closest = {Distance = distance, Character = char}
         end
     end
 	return closest
@@ -243,6 +243,7 @@ local function getClosestPartFromMouse()
     local target = getClosestObjectFromMouse().Character
     local mousePos = UserInputService:GetMouseLocation()
     local closest = {Part = nil, Distance = Options.MaxDistance.Value}
+    if not target then return end
     for _, parts in pairs(target:GetChildren()) do
         if not table.find(CharacterParts, parts.Name) then continue end
         local position, _ = toViewportPoint(parts.Position)
@@ -256,35 +257,38 @@ local function getClosestPartFromMouse()
     return closest
 end
 
+local function isMouseMovingTowards(target)
+    local mousePos = Mouse.Hit.Position
+    local targetPos = target.Position
+    local hRP = getCharacter(LocalPlayer):FindFirstChild("HumanoidRootPart")
+    local targetDirection = (targetPos - hRP.Position).Unit
+    local mouseDirection = (mousePos - hRP.Position).Unit
+    local dotProduct = targetDirection:Dot(mouseDirection)
+    local threshold = 0.995 -- change this value to adjust the angle threshold
+    return dotProduct > threshold
+end
+
 local function aimbot()
     local closestHitbox = getClosestPartFromMouse()
     local target = getClosestObjectFromMouse().Character
     local headPos = getCharacter(LocalPlayer):FindFirstChild("Head") or getCharacter(LocalPlayer):WaitForChild("Head", 1000)
-    if not headPos then return end
-
-    local position, visible = toViewportPoint(closestHitbox.Part.Position)
     local mousePos = UserInputService:GetMouseLocation()
-    
-
+    if not headPos then return end
+    if not closestHitbox then return end
     if closestHitbox.Part and target then
+        local position, visible = toViewportPoint(closestHitbox.Part.Position)
         if canHit(headPos.Position, closestHitbox.Part) and visible and isInsideFOV(position) then
             if hasHealth(target) and not sameTeam(target) then
-                local aimbotStrength = Options.AimbotAdjStr.Value
-                if aimbotStrength <= 0 then
-                    aimbotStrength = 2
-                end
-                local aimbotAdjustment = Options.AimbotAdj.Value
-                if aimbotAdjustment <= 0 then
-                    aimbotAdjustment = 5
-                end
-
-                local stabilize = ((aimbotAdjustment * (aimbotStrength * 2))) / Camera.ViewportSize.Y
-
-                local finalEnd = Vector2.new(math.floor((position.X - mousePos.X)), math.floor((position.Y - mousePos.Y)))
-
-                local endX = finalEnd.X * stabilize
-                local endY = finalEnd.Y * stabilize
-                --printconsole("x " .. endX .. " | y " .. endY)
+                if not isMouseMovingTowards(closestHitbox.Part) then return end
+                local offsetX = Options.AimbotOffsetX.Value
+                local offsetY = Options.AimbotOffsetY.Value
+                local relativeMousePosition = Vector2.new(position.X + offsetX, position.Y + offsetY) - mousePos
+                local aimbotStrength = math.clamp(Options.AimbotAdjStr.Value, 0, 10)
+                local aimbotAdjustment = math.clamp(Options.AimbotAdj.Value, 0, 100)
+                local stabilize = ((aimbotAdjustment / 100) * (aimbotStrength * 2)) / 10
+                if stabilize <= 0 then return end
+                local endX = relativeMousePosition.X * stabilize
+                local endY = relativeMousePosition.Y * stabilize
                 mousemoverel(endX, endY)
             end
         end
@@ -292,12 +296,14 @@ local function aimbot()
 end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    --if gameProcessedEvent then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         StartAim = true
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
+    --if gameProcessedEvent then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         StartAim = false
     end
@@ -309,11 +315,10 @@ local function stepped()
 
         -- fov circle
         addOrUpdateInstance(aimingDraw, "fovCircle", {
-            Visible = false,
             Thickness = 1,
-            Radius = (Options.AimbotFOV.Value * 10),
-            Position = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y),
-            Color = Color3.new(1, 1, 1),
+            Position = UserInputService:GetMouseLocation(),
+            Radius = (Options.AimbotFOV.Value * 5),
+            Visible = false,
             instance = "Circle";
         })
     end
@@ -321,8 +326,14 @@ end
 
 Mouse.Move:Connect(function()
     local hit = Mouse.Target
-    if StartAim and not (hit and hit.Parent:FindFirstChild("Humanoid")) then
-        aimbot()
+    if hit and hit.Parent:FindFirstChild("Humanoid") then return end
+    if StartAim and iswindowactive() and not Toggles.Camera.Value then
+        if not Debounce then
+            Debounce = true
+            aimbot()
+            task.wait(Delay)
+            Debounce = false
+        end
     end
 end)
 

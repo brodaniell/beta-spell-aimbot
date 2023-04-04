@@ -2,7 +2,7 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
-if getgenv().iniuria then
+if iniuria then
     return
 end
 
@@ -22,8 +22,7 @@ local function randomString(length: number)
 	return str
 end
 
--- loop names
-getgenv().render_loop_stepped_name = getgenv().renderloop_stepped_name or randomString(math.random(15, 35))
+-- globals
 getgenv().update_loop_stepped_name = getgenv().update_loop_stepped_name or randomString(math.random(15, 35))
 getgenv().iniuria = true
 getgenv().mouse_con = nil
@@ -43,6 +42,7 @@ local LastTick = 0
 local StartAim = false
 local Delay = 0.1
 local Debounce = false
+local CameraLock = false
 
 -- raycast
 local RaycastParam = RaycastParams.new()
@@ -300,12 +300,20 @@ UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         StartAim = true
     end
+
+    if Toggles.Camera.Value and input.UserInputType == Enum.UserInputType.MouseButton2 then
+        CameraLock = true
+    end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
     --if gameProcessedEvent then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         StartAim = false
+    end
+
+    if Toggles.Camera.Value and input.UserInputType == Enum.UserInputType.MouseButton2 then
+        CameraLock = false
     end
 end)
 
@@ -327,7 +335,7 @@ end
 Mouse.Move:Connect(function()
     local hit = Mouse.Target
     if hit and hit.Parent:FindFirstChild("Humanoid") then return end
-    if StartAim and iswindowactive() and not Toggles.Camera.Value then
+    if StartAim and iswindowactive() and not CameraLock then
         if not Debounce then
             Debounce = true
             aimbot()

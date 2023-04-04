@@ -43,6 +43,7 @@ local StartAim = false
 local Debounce = false
 local CameraLock = false
 local IgnoredPlayers = {}
+local BypassH4xeye = {5361853069, 5841467683}
 
 -- raycast
 local RaycastParam = RaycastParams.new()
@@ -276,8 +277,9 @@ local function aimbot(mouseSens, t)
                 local relativeMousePosition = Vector2.new(position.X + offsetX, position.Y + offsetY) - mousePos
                 local aimbotStrength = math.clamp(Options.AimbotAdjStr.Value, 0, 10)
                 local aimbotAdjustment = math.clamp(Options.AimbotAdj.Value, 0, 100)
-                local stabilize = ((aimbotAdjustment / 100) * (aimbotStrength * 2)) / 10
+                local stabilize = ((aimbotAdjustment / 100) * (aimbotStrength * 2)) / 50
                 if stabilize <= 0 then return end
+                -- 0.3, 120
                 local endX = (relativeMousePosition.X * stabilize) + (mouseSens * t)
                 local endY = (relativeMousePosition.Y * stabilize) + (mouseSens * t)
                 mousemoverel(endX, endY)
@@ -322,6 +324,24 @@ UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
         CameraLock = false
     end
 end)
+
+local function bypassAC()
+    local gameId = game.GameId
+    if not BypassH4xeye[gameId] then
+        return
+    end
+
+    local oldMethod;
+    oldMethod = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(event, ...)
+        local args = {...}
+        print(event)
+        for _, v in pairs(args) do
+            print(v)
+        end
+        return oldMethod(event, ...)
+    end))
+end
+bypassAC()
 
 local function stepped()
     if (tick() - LastTick) > (10 / 1000) then

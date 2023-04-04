@@ -24,8 +24,8 @@ end
 
 -- globals
 getgenv().update_loop_stepped_name = getgenv().update_loop_stepped_name or randomString(math.random(15, 35))
+getgenv().post_sim_loop_name = getgenv().post_sim_loop_name or randomString(math.random(15, 35))
 getgenv().iniuria = true
-getgenv().mouse_con = nil
 
 -- services
 local Players = game:GetService('Players')
@@ -43,6 +43,7 @@ local StartAim = false
 local Delay = 0.1
 local Debounce = false
 local CameraLock = false
+local IgnoredPlayers = {}
 
 -- raycast
 local RaycastParam = RaycastParams.new()
@@ -220,7 +221,7 @@ local function isInsideFOV(target)
 end
 
 local function getClosestObjectFromMouse()
-	local closest = {Distance = Options.MaxDistance.Value, Character = nil}
+	local closest = {Distance = Options.MaxDistance.Value * 2, Character = nil}
 	local mousePos = UserInputService:GetMouseLocation()
 
     for _, char in pairs(game:GetService("Workspace"):GetChildren()) do
@@ -230,8 +231,8 @@ local function getClosestObjectFromMouse()
         if hRP then
             local position, _ = toViewportPoint(hRP.Position)
             local distance = (mousePos - Vector2.new(position.X, position.Y)).Magnitude
-            if distance > Options.MaxDistance.Value or
-                (closest.Distance and distance >= closest.Distance) then continue
+            if (distance > closest.Distance) then
+                continue
             end
             closest = {Distance = distance, Character = char}
         end
@@ -242,14 +243,14 @@ end
 local function getClosestPartFromMouse()
     local target = getClosestObjectFromMouse().Character
     local mousePos = UserInputService:GetMouseLocation()
-    local closest = {Part = nil, Distance = Options.MaxDistance.Value}
+    local closest = {Part = nil, Distance = Options.MaxDistance.Value * 2}
     if not target then return end
     for _, parts in pairs(target:GetChildren()) do
         if not table.find(CharacterParts, parts.Name) then continue end
         local position, _ = toViewportPoint(parts.Position)
         local distance = (mousePos - Vector2.new(position.X, position.Y)).Magnitude
-        if distance > Options.MaxDistance.Value or
-            (closest.Distance and distance >= closest.Distance) then continue
+        if (distance > closest.Distance) then
+            continue
         end
         closest = {Part = parts, Distance = distance}
     end
@@ -257,29 +258,17 @@ local function getClosestPartFromMouse()
     return closest
 end
 
-local function isMouseMovingTowards(target)
-    local mousePos = Mouse.Hit.Position
-    local targetPos = target.Position
-    local hRP = getCharacter(LocalPlayer):FindFirstChild("HumanoidRootPart")
-    local targetDirection = (targetPos - hRP.Position).Unit
-    local mouseDirection = (mousePos - hRP.Position).Unit
-    local dotProduct = targetDirection:Dot(mouseDirection)
-    local threshold = 0.995 -- change this value to adjust the angle threshold
-    return dotProduct > threshold
-end
-
-local function aimbot()
+local function aimbot(mouseSens, t)
     local closestHitbox = getClosestPartFromMouse()
     local target = getClosestObjectFromMouse().Character
     local headPos = getCharacter(LocalPlayer):FindFirstChild("Head") or getCharacter(LocalPlayer):WaitForChild("Head", 1000)
     local mousePos = UserInputService:GetMouseLocation()
     if not headPos then return end
     if not closestHitbox then return end
-    if closestHitbox.Part and target then
+    if closestHitbox.Part and target and not IgnoredPlayers[target] then
         local position, visible = toViewportPoint(closestHitbox.Part.Position)
-        if canHit(headPos.Position, closestHitbox.Part) and visible and isInsideFOV(position) then
+        if position and canHit(headPos.Position, closestHitbox.Part) and visible and isInsideFOV(position) then
             if hasHealth(target) and not sameTeam(target) then
-                if not isMouseMovingTowards(closestHitbox.Part) then return end
                 local offsetX = Options.AimbotOffsetX.Value
                 local offsetY = Options.AimbotOffsetY.Value
                 local relativeMousePosition = Vector2.new(position.X + offsetX, position.Y + offsetY) - mousePos
@@ -287,10 +276,25 @@ local function aimbot()
                 local aimbotAdjustment = math.clamp(Options.AimbotAdj.Value, 0, 100)
                 local stabilize = ((aimbotAdjustment / 100) * (aimbotStrength * 2)) / 10
                 if stabilize <= 0 then return end
-                local endX = relativeMousePosition.X * stabilize
-                local endY = relativeMousePosition.Y * stabilize
+                local endX = (relativeMousePosition.X * stabilize) + (mouseSens * t)
+                local endY = (relativeMousePosition.Y * stabilize) + (mouseSens * t)
                 mousemoverel(endX, endY)
             end
+        end
+    end
+end
+
+local function removePlayersFromIgnore()
+    -- Character
+    for _, v in pairs(IgnoredPlayers) do
+        local hRP = v:FindFirstChild("HumanoidRootPart")
+        if hRP then
+            local position, _ = toViewportPoint(hRP.Position)
+            if not isInsideFOV(position) then
+                IgnoredPlayers[v] = nil
+            end
+        else
+            IgnoredPlayers[v] = nil
         end
     end
 end
@@ -321,24 +325,34 @@ local function stepped()
     if (tick() - LastTick) > (10 / 1000) then
         LastTick = tick()
 
+        removePlayersFromIgnore()
+
         -- fov circle
         addOrUpdateInstance(aimingDraw, "fovCircle", {
             Thickness = 1,
             Position = UserInputService:GetMouseLocation(),
             Radius = (Options.AimbotFOV.Value * 5),
-            Visible = false,
+            Visible = true,
             instance = "Circle";
         })
     end
 end
 
 Mouse.Move:Connect(function()
-    local hit = Mouse.Target
-    if hit and hit.Parent:FindFirstChild("Humanoid") then return end
+    local target = Mouse.Target
+    if target and target.Parent:FindFirstChild("Humanoid") then
+        if not IgnoredPlayers[target.Parent] then
+            IgnoredPlayers[target.Parent] = target.Parent
+        end
+    end
+end)
+
+post_sim_loop_name = RunService.PostSimulation:Connect(function(t)
+    Mouse.Move:Wait()
     if StartAim and iswindowactive() and not CameraLock then
         if not Debounce then
             Debounce = true
-            aimbot()
+            aimbot(UserSettings().GameSettings.MouseSensitivity, t)
             task.wait(Delay)
             Debounce = false
         end

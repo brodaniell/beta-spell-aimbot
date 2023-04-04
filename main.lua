@@ -70,10 +70,10 @@ local CharacterParts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "R
 drawlib.new('Square').Visible = false
 
 -- ui lib
-local repo = 'https://raw.githubusercontent.com/wally-rblx/LinoriaLib/main/'
+local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
 local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
 local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
-local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/brodaniell/iniuria/main/SaveManager.lua"))()
 
 local Window = Library:CreateWindow({
     Title = 'Iniuria | v0.1 | alpha'
@@ -90,7 +90,8 @@ LegitTabbox1:AddSlider('AimbotAdjStr', { Text = "Aim Adjustment Strength", Suffi
 LegitTabbox1:AddDivider()
 LegitTabbox1:AddSlider('AimbotOffsetX', { Text = "Aimbot Offset X", Default = 0, Min = -10, Max = 10, Rounding = 0})
 LegitTabbox1:AddSlider('AimbotOffsetY', { Text = "Aimbot Offset Y", Default = 0, Min = -10, Max = 10, Rounding = 0})
-LegitTabbox1:AddSlider('Delay', { Text = "Debug", Default = 0.15, Min = 0.025, Max = 1, Rounding = 3})
+LegitTabbox1:AddDivider()
+LegitTabbox1:AddSlider('Delay', { Text = "Interval", Default = 0.15, Min = 0.025, Max = 1, Rounding = 3})
 
 local LegitTabbox2 = LegitTab:AddRightGroupbox('Global Aimbot Settings')
 LegitTabbox2:AddToggle('VCheck', {Text = 'Visibility Check'})
@@ -115,14 +116,17 @@ ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({ 'MenuKeybind' })
-ThemeManager:SetFolder('aimware')
-SaveManager:SetFolder('aimware')
+ThemeManager:SetFolder('iniuria')
+SaveManager:SetFolder('iniuria')
 SaveManager:BuildConfigSection(SettingsTab)
 ThemeManager:ApplyToGroupbox(ThemesTabbox)
 Library:OnUnload(function()
     Library.Unloaded = true
 end)
 SaveManager:LoadAutoloadConfig()
+
+-- esp
+
 
 -- functions
 local function newDrawing(class_name)

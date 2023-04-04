@@ -40,7 +40,6 @@ local DummyPart = Instance.new('Part', nil)
 local IgnoredInstances = {}
 local LastTick = 0
 local StartAim = false
-local Delay = 0.1
 local Debounce = false
 local CameraLock = false
 local IgnoredPlayers = {}
@@ -90,10 +89,13 @@ LegitTabbox1:AddSlider('AimbotAdjStr', { Text = "Aim Adjustment Strength", Suffi
 LegitTabbox1:AddDivider()
 LegitTabbox1:AddSlider('AimbotOffsetX', { Text = "Aimbot Offset X", Default = 0, Min = -10, Max = 10, Rounding = 0})
 LegitTabbox1:AddSlider('AimbotOffsetY', { Text = "Aimbot Offset Y", Default = 0, Min = -10, Max = 10, Rounding = 0})
+LegitTabbox1:AddSlider('Delay', { Text = "Debug", Default = 0.15, Min = 0.025, Max = 1, Rounding = 2})
+
 local LegitTabbox2 = LegitTab:AddRightGroupbox('Global Aimbot Settings')
 LegitTabbox2:AddToggle('VCheck', {Text = 'Visibility Check'})
 LegitTabbox2:AddToggle('TCheck', {Text = 'Team Check'})
 LegitTabbox2:AddToggle('Camera', {Text = 'Disable when using Camera'})
+
 
 -- clanning
 local ClanningTab = Window:AddTab('Clanning')
@@ -353,7 +355,8 @@ post_sim_loop_name = RunService.PostSimulation:Connect(function(t)
         if not Debounce then
             Debounce = true
             aimbot(UserSettings().GameSettings.MouseSensitivity, t)
-            task.wait(Delay)
+            local delay = math.clamp(Options.Delay.Value, 0.025, 1)
+            task.wait(delay)
             Debounce = false
         end
     end

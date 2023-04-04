@@ -190,10 +190,10 @@ local SaveManager = {} do
 
 			local success, err = self:Load(name)
 			if not success then
-				return self.Library:Notify('Failed to load autoload config: ' .. err)
+				return --self.Library:Notify('Failed to load autoload config: ' .. err)
 			end
 
-			self.Library:Notify(string.format('Auto loaded config %q', name))
+			--self.Library:Notify(string.format('Auto loaded config %q', name))
 		end
 	end
 

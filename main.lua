@@ -89,7 +89,7 @@ LegitTabbox1:AddSlider('AimbotAdjStr', { Text = "Aim Adjustment Strength", Suffi
 LegitTabbox1:AddDivider()
 LegitTabbox1:AddSlider('AimbotOffsetX', { Text = "Aimbot Offset X", Default = 0, Min = -10, Max = 10, Rounding = 0})
 LegitTabbox1:AddSlider('AimbotOffsetY', { Text = "Aimbot Offset Y", Default = 0, Min = -10, Max = 10, Rounding = 0})
-LegitTabbox1:AddSlider('Delay', { Text = "Debug", Default = 0.15, Min = 0.025, Max = 1, Rounding = 2})
+LegitTabbox1:AddSlider('Delay', { Text = "Debug", Default = 0.15, Min = 0.025, Max = 1, Rounding = 3})
 
 local LegitTabbox2 = LegitTab:AddRightGroupbox('Global Aimbot Settings')
 LegitTabbox2:AddToggle('VCheck', {Text = 'Visibility Check'})

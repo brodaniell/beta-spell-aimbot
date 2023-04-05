@@ -92,22 +92,33 @@ LegitTabbox1:AddSlider('AimbotOffsetX', { Text = "Aimbot Offset X", Default = 0,
 LegitTabbox1:AddSlider('AimbotOffsetY', { Text = "Aimbot Offset Y", Default = 0, Min = -10, Max = 10, Rounding = 0})
 LegitTabbox1:AddDivider()
 LegitTabbox1:AddSlider('Delay', { Text = "Interval", Default = 0.15, Min = 0.025, Max = 1, Rounding = 3})
+LegitTabbox1:AddSlider('Percentage', { Text = "Affects aimbot", Default = 1, Min = 1, Max = 100, Rounding = 1})
 
 local LegitTabbox2 = LegitTab:AddRightGroupbox('Global Aimbot Settings')
 LegitTabbox2:AddToggle('VCheck', {Text = 'Visibility Check'})
 LegitTabbox2:AddToggle('TCheck', {Text = 'Team Check'})
 LegitTabbox2:AddToggle('Camera', {Text = 'Disable when using Camera'})
 
-
--- clanning
-local ClanningTab = Window:AddTab('Clanning')
-local ClanningTabbox1 = ClanningTab:AddLeftGroupbox('Useful')
-ClanningTabbox1:AddLabel('Nothing here yet :)')
-
 -- visual
 local VisualTab = Window:AddTab('Visual')
-local VisualTabbox1 = VisualTab:AddLeftGroupbox('Something')
-VisualTabbox1:AddLabel('Nothing here yet :)')
+local VisualTabbox1 = VisualTab:AddLeftGroupbox('General')
+VisualTabbox1:AddToggle('Enabled', {Text = 'Enabled'})
+VisualTabbox1:AddDivider()
+VisualTabbox1:AddToggle('2D Box', {Text = '2D Box'})
+VisualTabbox1:AddToggle('Chams', {Text = 'Chams'})
+
+local VisualTabbox2 = VisualTab:AddRightGroupbox('Settings')
+VisualTabbox2:AddLabel('Visible Color'):AddColorPicker('ColorPicker', {
+    Default = Color3.new(0, 1, 0),
+    Title = 'Visible Color',
+    Transparency = 0
+})
+VisualTabbox2:AddLabel('Nonvisible Color'):AddColorPicker('ColorPicker', {
+    Default = Color3.new(1, 0, 0),
+    Title = 'Nonvisible Color',
+    Transparency = 0
+})
+
 
 -- settings
 local SettingsTab = Window:AddTab('Settings')
@@ -281,7 +292,8 @@ local function aimbot(mouseSens, t)
                 local relativeMousePosition = Vector2.new(position.X + offsetX, position.Y + offsetY) - mousePos
                 local aimbotStrength = math.clamp(Options.AimbotAdjStr.Value, 0, 10)
                 local aimbotAdjustment = math.clamp(Options.AimbotAdj.Value, 0, 100)
-                local stabilize = ((aimbotAdjustment / 100) * (aimbotStrength * 2)) / 50
+                local debug = math.clamp(Options.Percentage.Value, 1, 100)
+                local stabilize = ((aimbotAdjustment / 100) * (aimbotStrength * 2)) / debug
                 if stabilize <= 0 then return end
                 -- 0.3, 120
                 local endX = (relativeMousePosition.X * stabilize) + (mouseSens * t)

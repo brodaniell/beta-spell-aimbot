@@ -43,8 +43,6 @@ local StartAim = false
 local Debounce = false
 local CameraLock = false
 local IgnoredPlayers = {}
-local VisibleColor = Color3.new(1, 1, 1)
-local NotvisibleColor = Color3.new(1, 1, 1)
 
 -- raycast
 local RaycastParam = RaycastParams.new()
@@ -61,6 +59,7 @@ local CharacterParts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "R
 
 -- init drawing lib
 drawlib.new('Square').Visible = false
+local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/Sw1ndlerScripts/RobloxScripts/main/Esp%20Library/main.lua",true))()
 
 --#region UI
 local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
@@ -102,20 +101,12 @@ local VisualTabbox2 = VisualTab:AddRightGroupbox('Settings')
 VisualTabbox2:AddLabel('Visible Color'):AddColorPicker('VisibleColor', {
     Default = Color3.new(0, 1, 0),
     Title = 'Visible Color',
-    Transparency = 0,
-
-    Callback = function(value)
-        VisibleColor = value
-    end
+    Transparency = 0
 })
 VisualTabbox2:AddLabel('Nonvisible Color'):AddColorPicker('NotvisibleColor', {
     Default = Color3.new(1, 0, 0),
     Title = 'Nonvisible Color',
-    Transparency = 0,
-
-    Callback = function(value)
-        NotvisibleColor = value
-    end
+    Transparency = 0
 })
 VisualTabbox2:AddSlider('FillOpacity', { Text = "Fill Opacity", Default = 0.5, Min = 0, Max = 1, Rounding = 1})
 VisualTabbox2:AddSlider('OutlineOpacity', { Text = "Outline Opacity", Default = 1, Min = 0, Max = 1, Rounding = 1})
@@ -366,121 +357,7 @@ end)
 --#endregion
 
 --#region ESP
-local function createQuad(color, opacity)
-    local quad = drawlib.new("Quad")
-    quad.Visible = false
-    quad.PointA = Vector2.new(0, 0)
-    quad.PointB = Vector2.new(0, 0)
-    quad.PointC = Vector2.new(0, 0)
-    quad.PointD = Vector2.new(0, 0)
-    quad.Color = color
-    quad.Filled = true
-    quad.Thickness = 1
-    quad.Transparency = opacity
-    return quad
-end
 
-local function colorize(color, t)
-    for _, v in pairs(t) do
-        v.Color = color
-    end
-end
-
-local function createESP(character)
-    local headPos = getCharacter(LocalPlayer):FindFirstChild("Head")
-    if not headPos then return end
-
-    local hRP = character:FindFirstChild("HumanoidRootPart")
-    if not hRP then return end
-
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-
-    for _, v in pairs(character:GetChildren()) do
-        if not (v:IsA("MeshPart") or v.Name == "Head" or v.Name == "Left Arm" or v.Name == "Right Arm" or v.Name == "Right Leg" or v.Name == "Left Leg" or v.Name == "Torso") then continue end
-        local quads = {
-            quad1 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
-            quad2 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
-            quad3 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
-            quad4 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
-            quad5 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
-            quad6 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
-        }
-        
-        local _, visible = toViewportPoint(v.Position)
-        if visible and canHit(headPos.Position, v.Position) then
-            local size_X = v.Size.X/2
-            local size_Y = v.Size.X/2
-            local size_Z = v.Size.X/2
-
-            local top1 = toViewportPoint((v.CFrame * CFrame.new(-size_X, size_Y, -size_Z)).p)
-            local top2 = toViewportPoint((v.CFrame * CFrame.new(-size_X, size_Y, size_Z)).p)
-            local top3 = toViewportPoint((v.CFrame * CFrame.new(size_X, size_Y, size_Z)).p)
-            local top4 = toViewportPoint((v.CFrame * CFrame.new(size_X, size_Y, -size_Z)).p)
-            local bottom1 = toViewportPoint((v.CFrame * CFrame.new(-size_X, -size_Y, -size_Z)).p)
-            local bottom2 = toViewportPoint((v.CFrame * CFrame.new(-size_X, -size_Y, size_Z)).p)
-            local bottom3 = toViewportPoint((v.CFrame * CFrame.new(size_X, -size_Y, size_Z)).p)
-            local bottom4 = toViewportPoint((v.CFrame * CFrame.new(size_X, -size_Y, -size_Z)).p)
-            
-            -- Top
-            quads.quad1.PointA = Vector2.new(top1.X, top1.Y)
-            quads.quad1.PointB = Vector2.new(top2.X, top2.Y)
-            quads.quad1.PointC = Vector2.new(top3.X, top3.Y)
-            quads.quad1.PointD = Vector2.new(top4.X, top4.Y)
-
-            -- Bottom
-            quads.quad2.PointA = Vector2.new(bottom1.X, bottom1.Y)
-            quads.quad2.PointB = Vector2.new(bottom2.X, bottom2.Y)
-            quads.quad2.PointC = Vector2.new(bottom3.X, bottom3.Y)
-            quads.quad2.PointD = Vector2.new(bottom4.X, bottom4.Y)
-
-            -- Sides
-            quads.quad3.PointA = Vector2.new(top1.X, top1.Y)
-            quads.quad3.PointB = Vector2.new(top2.X, top2.Y)
-            quads.quad3.PointC = Vector2.new(bottom2.X, bottom2.Y)
-            quads.quad3.PointD = Vector2.new(bottom1.X, bottom1.Y)
-            
-            quads.quad4.PointA = Vector2.new(top2.X, top2.Y)
-            quads.quad4.PointB = Vector2.new(top3.X, top3.Y)
-            quads.quad4.PointC = Vector2.new(bottom3.X, bottom3.Y)
-            quads.quad4.PointD = Vector2.new(bottom2.X, bottom2.Y)
-            
-            quads.quad5.PointA = Vector2.new(top3.X, top3.Y)
-            quads.quad5.PointB = Vector2.new(top4.X, top4.Y)
-            quads.quad5.PointC = Vector2.new(bottom4.X, bottom4.Y)
-            quads.quad5.PointD = Vector2.new(bottom3.X, bottom3.Y)
-
-            quads.quad6.PointA = Vector2.new(top4.X, top4.Y)
-            quads.quad6.PointB = Vector2.new(top1.X, top1.Y)
-            quads.quad6.PointC = Vector2.new(bottom1.X, bottom1.Y)
-            quads.quad6.PointD = Vector2.new(bottom4.X, bottom4.Y)
-
-            colorize(VisibleColor, quads)
-        else
-            colorize(NotvisibleColor, quads)
-        end
-
-        for _, v in pairs(quads) do
-            if (Toggles.ESP.Value) then
-                v.Visible = Toggles.Chams.Value
-            else
-                v.Visible = false
-            end
-        end
-    end
-end
-
-for _, v in pairs(getPlayers()) do
-    if v ~= LocalPlayer then
-        coroutine.wrap(createESP)(getCharacter(v))
-    end
-end
-
-game:GetService("Players").PlayerAdded:Connect(function(v)
-    if v ~= LocalPlayer then
-        coroutine.wrap(createESP)(getCharacter(v))
-    end
-end)
 --#endregion
 
 --#region RenderStep

@@ -366,12 +366,6 @@ local function stepped()
 
         removePlayersFromIgnore()
 
-        for _, v in pairs(getPlayers()) do
-            if v ~= LocalPlayer then
-                coroutine.wrap(createESP)(getCharacter(v))
-            end
-        end
-
         -- fov circle
         addOrUpdateInstance(aimingDraw, "fovCircle", {
             Thickness = 1,

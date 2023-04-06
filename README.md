@@ -2,5 +2,5 @@
 
 Universal Aimbot for Roblox
 
-UI: Linoria Libary 
+UI: Linoria Libary
 ESP: DendroESP

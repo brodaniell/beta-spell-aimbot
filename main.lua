@@ -43,7 +43,8 @@ local StartAim = false
 local Debounce = false
 local CameraLock = false
 local IgnoredPlayers = {}
-local BypassH4xeye = {5361853069, 5841467683}
+local VisibleColor = Color3.new(1, 1, 1)
+local NotvisibleColor = Color3.new(1, 1, 1)
 
 -- raycast
 local RaycastParam = RaycastParams.new()
@@ -60,7 +61,6 @@ local CharacterParts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "R
 
 -- init drawing lib
 drawlib.new('Square').Visible = false
-local DendroESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/LordNahida/DendroESP/main/Source.lua"))()
 
 --#region UI
 local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
@@ -95,7 +95,7 @@ local VisualTab = Window:AddTab('Visual')
 local VisualTabbox1 = VisualTab:AddLeftGroupbox('General')
 VisualTabbox1:AddToggle('ESP', {Text = 'ESP enabled'})
 VisualTabbox1:AddDivider()
-VisualTabbox1:AddToggle('2DBox', {Text = '2D Box'})
+VisualTabbox1:AddToggle('Box', {Text = '2D Box'})
 VisualTabbox1:AddToggle('Chams', {Text = 'Chams'})
 
 local VisualTabbox2 = VisualTab:AddRightGroupbox('Settings')
@@ -105,7 +105,7 @@ VisualTabbox2:AddLabel('Visible Color'):AddColorPicker('VisibleColor', {
     Transparency = 0,
 
     Callback = function(value)
-        DendroESP.PositiveColor = value
+        VisibleColor = value
     end
 })
 VisualTabbox2:AddLabel('Nonvisible Color'):AddColorPicker('NotvisibleColor', {
@@ -114,7 +114,7 @@ VisualTabbox2:AddLabel('Nonvisible Color'):AddColorPicker('NotvisibleColor', {
     Transparency = 0,
 
     Callback = function(value)
-        DendroESP.NegativeColor = value
+        NotvisibleColor = value
     end
 })
 VisualTabbox2:AddSlider('FillOpacity', { Text = "Fill Opacity", Default = 0.5, Min = 0, Max = 1, Rounding = 1})
@@ -135,6 +135,7 @@ Library:OnUnload(function()
 end)
 SaveManager:LoadAutoloadConfig()
 --#endregion
+
 --#region Aimbot
 local function newDrawing(class_name)
     return function(props)
@@ -363,46 +364,126 @@ post_sim_loop_name = RunService.PostSimulation:Connect(function(t)
     end
 end)
 --#endregion
+
 --#region ESP
-local function AddChar(Char)
-    Char:WaitForChild("HumanoidRootPart")
-    if Toggles.ESP.Value then
-        if Toggles.Chams.Value then
-            local Proxy = DendroESP:AddCharacter(Char, "Highlight")
-            Proxy.PositiveOutlineColor = Options.VisibleColor.Value
-            Proxy.NegativeOutlineColor = Options.NotvisibleColor.Value
-            Proxy.PositiveFillColor = Options.VisibleColor.Value
-            Proxy.NegativeFillColor = Options.NotvisibleColor.Value
-            Proxy.FillOpacity = math.clamp(Options.FillOpacity.Value, 0, 1)
-            Proxy.OutlineOpacity = math.clamp(Options.OutlineOpacity.Value, 0, 1)
+local function createQuad(color, opacity)
+    local quad = drawlib.new("Quad")
+    quad.Visible = false
+    quad.PointA = Vector2.new(0, 0)
+    quad.PointB = Vector2.new(0, 0)
+    quad.PointC = Vector2.new(0, 0)
+    quad.PointD = Vector2.new(0, 0)
+    quad.Color = color
+    quad.Filled = true
+    quad.Thickness = 1
+    quad.Transparency = opacity
+    return quad
+end
+
+local function colorize(color, t)
+    for _, v in pairs(t) do
+        v.Color = color
+    end
+end
+
+local function createESP(character)
+    local headPos = getCharacter(LocalPlayer):FindFirstChild("Head")
+    if not headPos then return end
+
+    local hRP = character:FindFirstChild("HumanoidRootPart")
+    if not hRP then return end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    for _, v in pairs(character:GetChildren()) do
+        if not (v:IsA("MeshPart") or v.Name == "Head" or v.Name == "Left Arm" or v.Name == "Right Arm" or v.Name == "Right Leg" or v.Name == "Left Leg" or v.Name == "Torso") then continue end
+        local quads = {
+            quad1 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
+            quad2 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
+            quad3 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
+            quad4 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
+            quad5 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
+            quad6 = createQuad(Options.VisibleColor.Value, math.clamp(Options.FillOpacity.Value, 0, 1)),
+        }
+        
+        local _, visible = toViewportPoint(v.Position)
+        if visible and canHit(headPos.Position, v.Position) then
+            local size_X = v.Size.X/2
+            local size_Y = v.Size.X/2
+            local size_Z = v.Size.X/2
+
+            local top1 = toViewportPoint((v.CFrame * CFrame.new(-size_X, size_Y, -size_Z)).p)
+            local top2 = toViewportPoint((v.CFrame * CFrame.new(-size_X, size_Y, size_Z)).p)
+            local top3 = toViewportPoint((v.CFrame * CFrame.new(size_X, size_Y, size_Z)).p)
+            local top4 = toViewportPoint((v.CFrame * CFrame.new(size_X, size_Y, -size_Z)).p)
+            local bottom1 = toViewportPoint((v.CFrame * CFrame.new(-size_X, -size_Y, -size_Z)).p)
+            local bottom2 = toViewportPoint((v.CFrame * CFrame.new(-size_X, -size_Y, size_Z)).p)
+            local bottom3 = toViewportPoint((v.CFrame * CFrame.new(size_X, -size_Y, size_Z)).p)
+            local bottom4 = toViewportPoint((v.CFrame * CFrame.new(size_X, -size_Y, -size_Z)).p)
+            
+            -- Top
+            quads.quad1.PointA = Vector2.new(top1.X, top1.Y)
+            quads.quad1.PointB = Vector2.new(top2.X, top2.Y)
+            quads.quad1.PointC = Vector2.new(top3.X, top3.Y)
+            quads.quad1.PointD = Vector2.new(top4.X, top4.Y)
+
+            -- Bottom
+            quads.quad2.PointA = Vector2.new(bottom1.X, bottom1.Y)
+            quads.quad2.PointB = Vector2.new(bottom2.X, bottom2.Y)
+            quads.quad2.PointC = Vector2.new(bottom3.X, bottom3.Y)
+            quads.quad2.PointD = Vector2.new(bottom4.X, bottom4.Y)
+
+            -- Sides
+            quads.quad3.PointA = Vector2.new(top1.X, top1.Y)
+            quads.quad3.PointB = Vector2.new(top2.X, top2.Y)
+            quads.quad3.PointC = Vector2.new(bottom2.X, bottom2.Y)
+            quads.quad3.PointD = Vector2.new(bottom1.X, bottom1.Y)
+            
+            quads.quad4.PointA = Vector2.new(top2.X, top2.Y)
+            quads.quad4.PointB = Vector2.new(top3.X, top3.Y)
+            quads.quad4.PointC = Vector2.new(bottom3.X, bottom3.Y)
+            quads.quad4.PointD = Vector2.new(bottom2.X, bottom2.Y)
+            
+            quads.quad5.PointA = Vector2.new(top3.X, top3.Y)
+            quads.quad5.PointB = Vector2.new(top4.X, top4.Y)
+            quads.quad5.PointC = Vector2.new(bottom4.X, bottom4.Y)
+            quads.quad5.PointD = Vector2.new(bottom3.X, bottom3.Y)
+
+            quads.quad6.PointA = Vector2.new(top4.X, top4.Y)
+            quads.quad6.PointB = Vector2.new(top1.X, top1.Y)
+            quads.quad6.PointC = Vector2.new(bottom1.X, bottom1.Y)
+            quads.quad6.PointD = Vector2.new(bottom4.X, bottom4.Y)
+
+            colorize(VisibleColor, quads)
+        else
+            colorize(NotvisibleColor, quads)
         end
 
-        if Toggles["2DBox"].Value then
-            local Proxy = DendroESP:AddCharacter(Char, "BoundingBox")
-            Proxy.Opacity = math.clamp(Options.OutlineOpacity.Value, 0, 1)
+        for _, v in pairs(quads) do
+            if (Toggles.ESP.Value) then
+                v.Visible = Toggles.Chams.Value
+            else
+                v.Visible = false
+            end
         end
     end
 end
 
-local function AddPlayer(Player)
-    if (getCharacter(Player)) then
-        AddChar(getCharacter(Player))
+for _, v in pairs(getPlayers()) do
+    if v ~= LocalPlayer then
+        coroutine.wrap(createESP)(getCharacter(v))
     end
-
-    Player.CharacterAdded:Connect(function()
-        AddChar(getCharacter(Player))
-    end)
-end;
-
-for _, __ in pairs(getPlayers()) do
-    if (not __.Character or __ == game:GetService("Players").LocalPlayer) then continue end
-    AddPlayer(__)
 end
 
-game:GetService("Players").PlayerAdded:Connect(function(Player)
-    AddPlayer(Player)
+game:GetService("Players").PlayerAdded:Connect(function(v)
+    if v ~= LocalPlayer then
+        coroutine.wrap(createESP)(getCharacter(v))
+    end
 end)
+--#endregion
 
+--#region RenderStep
 local function stepped()
     if (tick() - LastTick) > (10 / 1000) then
         LastTick = tick()
@@ -410,8 +491,9 @@ local function stepped()
         removePlayersFromIgnore()
 
         for _, v in pairs(getPlayers()) do
-            if (not v.Character or v == game:GetService("Players").LocalPlayer) then continue end
-            AddPlayer(v)
+            if v ~= LocalPlayer then
+                coroutine.wrap(createESP)(getCharacter(v))
+            end
         end
 
         -- fov circle

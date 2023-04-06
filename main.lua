@@ -59,7 +59,6 @@ local CharacterParts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "R
 
 -- init drawing lib
 drawlib.new('Square').Visible = false
-local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/Sw1ndlerScripts/RobloxScripts/main/Esp%20Library/main.lua",true))()
 
 --#region UI
 local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'

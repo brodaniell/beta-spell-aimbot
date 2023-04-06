@@ -55,19 +55,12 @@ local aimingDraw = {
     fovCircle = nil
 }
 
-local espDraw = {
-    box = {
-        boxHolder = {},
-        boxHealth = {},
-        boxName = {},
-    },
-}
-
 -- character parts
 local CharacterParts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg"}
 
 -- init drawing lib
 drawlib.new('Square').Visible = false
+local DendroESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/LordNahida/DendroESP/main/Source.lua"))()
 
 -- ui lib
 local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
@@ -92,7 +85,7 @@ LegitTabbox1:AddSlider('AimbotOffsetX', { Text = "Aimbot Offset X", Default = 0,
 LegitTabbox1:AddSlider('AimbotOffsetY', { Text = "Aimbot Offset Y", Default = 0, Min = -10, Max = 10, Rounding = 0})
 LegitTabbox1:AddDivider()
 LegitTabbox1:AddSlider('Delay', { Text = "Interval", Default = 0.15, Min = 0.025, Max = 1, Rounding = 3})
-LegitTabbox1:AddSlider('Percentage', { Text = "Affects aimbot", Default = 1, Min = 1, Max = 100, Rounding = 1})
+LegitTabbox1:AddSlider('Percentage', { Text = "Divider", Default = 1, Min = 1, Max = 100, Rounding = 1})
 
 local LegitTabbox2 = LegitTab:AddRightGroupbox('Global Aimbot Settings')
 LegitTabbox2:AddToggle('VCheck', {Text = 'Visibility Check'})
@@ -102,22 +95,32 @@ LegitTabbox2:AddToggle('Camera', {Text = 'Disable when using Camera'})
 -- visual
 local VisualTab = Window:AddTab('Visual')
 local VisualTabbox1 = VisualTab:AddLeftGroupbox('General')
-VisualTabbox1:AddToggle('Enabled', {Text = 'Enabled'})
+VisualTabbox1:AddToggle('ESP', {Text = 'ESP enabled'})
 VisualTabbox1:AddDivider()
-VisualTabbox1:AddToggle('2D Box', {Text = '2D Box'})
+VisualTabbox1:AddToggle('2DBox', {Text = '2D Box'})
 VisualTabbox1:AddToggle('Chams', {Text = 'Chams'})
 
 local VisualTabbox2 = VisualTab:AddRightGroupbox('Settings')
-VisualTabbox2:AddLabel('Visible Color'):AddColorPicker('ColorPicker', {
+VisualTabbox2:AddLabel('Visible Color'):AddColorPicker('VisibleColor', {
     Default = Color3.new(0, 1, 0),
     Title = 'Visible Color',
-    Transparency = 0
+    Transparency = 0,
+
+    Callback = function(value)
+        DendroESP.PositiveColor = value
+    end
 })
-VisualTabbox2:AddLabel('Nonvisible Color'):AddColorPicker('ColorPicker', {
+VisualTabbox2:AddLabel('Nonvisible Color'):AddColorPicker('NotvisibleColor', {
     Default = Color3.new(1, 0, 0),
     Title = 'Nonvisible Color',
-    Transparency = 0
+    Transparency = 0,
+
+    Callback = function(value)
+        DendroESP.NegativeColor = value
+    end
 })
+VisualTabbox2:AddSlider('FillOpacity', { Text = "Fill Opacity", Default = 0.5, Min = 0, Max = 1, Rounding = 1})
+VisualTabbox2:AddSlider('OutlineOpacity', { Text = "Outline Opacity", Default = 1, Min = 0, Max = 1, Rounding = 1})
 
 
 -- settings
@@ -135,9 +138,6 @@ Library:OnUnload(function()
     Library.Unloaded = true
 end)
 SaveManager:LoadAutoloadConfig()
-
--- esp
-
 
 -- functions
 local function newDrawing(class_name)
@@ -179,6 +179,10 @@ end
 local function toViewportPoint(v3: Vector3)
     local screenPos, visible = Camera:WorldToViewportPoint(v3)
     return Vector3.new(screenPos.X, screenPos.Y, screenPos.Z), visible
+end
+
+local function getPlayers()
+    return game:GetService("Players"):GetPlayers()
 end
 
 local function canHit(originPosition: Vector3, target: Vector3)
@@ -359,23 +363,6 @@ local function bypassAC()
 end
 bypassAC()
 
-local function stepped()
-    if (tick() - LastTick) > (10 / 1000) then
-        LastTick = tick()
-
-        removePlayersFromIgnore()
-
-        -- fov circle
-        addOrUpdateInstance(aimingDraw, "fovCircle", {
-            Thickness = 1,
-            Position = UserInputService:GetMouseLocation(),
-            Radius = (Options.AimbotFOV.Value * 5),
-            Visible = false,
-            instance = "Circle";
-        })
-    end
-end
-
 Mouse.Move:Connect(function()
     local target = Mouse.Target
     if target and target.Parent:FindFirstChild("Humanoid") then
@@ -397,5 +384,67 @@ post_sim_loop_name = RunService.PostSimulation:Connect(function(t)
         end
     end
 end)
+
+
+local function AddChar(Char)
+    Char:WaitForChild("HumanoidRootPart")
+    if Toggles.ESP.Value then
+        if Toggles.Chams.Value then
+            local Proxy = DendroESP:AddCharacter(Char, "Highlight")
+            Proxy.PositiveOutlineColor = Options.VisibleColor.Value
+            Proxy.NegativeOutlineColor = Options.NotvisibleColor.Value
+            Proxy.PositiveFillColor = Options.VisibleColor.Value
+            Proxy.NegativeFillColor = Options.NotvisibleColor.Value
+            Proxy.FillOpacity = math.clamp(Options.FillOpacity.Value, 0, 1)
+            Proxy.OutlineOpacity = math.clamp(Options.OutlineOpacity.Value, 0, 1)
+        end
+
+        if Toggles["2DBox"].Value then
+            local Proxy = DendroESP:AddCharacter(Char, "BoundingBox")
+            Proxy.Opacity = math.clamp(Options.OutlineOpacity.Value, 0, 1)
+        end
+    end
+end
+
+local function AddPlayer(Player)
+    if (getCharacter(Player)) then
+        AddChar(getCharacter(Player))
+    end
+
+    Player.CharacterAdded:Connect(function()
+        AddChar(getCharacter(Player))
+    end)
+end;
+
+for _, __ in pairs(getPlayers()) do
+    if (not __.Character or __ == game:GetService("Players").LocalPlayer) then continue end
+    AddPlayer(__)
+end
+
+game:GetService("Players").PlayerAdded:Connect(function(Player)
+    AddPlayer(Player)
+end)
+
+local function stepped()
+    if (tick() - LastTick) > (10 / 1000) then
+        LastTick = tick()
+
+        removePlayersFromIgnore()
+
+        for _, v in pairs(getPlayers()) do
+            if (not v.Character or v == game:GetService("Players").LocalPlayer) then continue end
+            AddPlayer(v)
+        end
+
+        -- fov circle
+        addOrUpdateInstance(aimingDraw, "fovCircle", {
+            Thickness = 1,
+            Position = UserInputService:GetMouseLocation(),
+            Radius = (Options.AimbotFOV.Value * 5),
+            Visible = false,
+            instance = "Circle";
+        })
+    end
+end
 
 RunService:BindToRenderStep(update_loop_stepped_name, 199, stepped)

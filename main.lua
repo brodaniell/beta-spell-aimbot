@@ -62,7 +62,7 @@ local CharacterParts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "R
 drawlib.new('Square').Visible = false
 local DendroESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/LordNahida/DendroESP/main/Source.lua"))()
 
--- ui lib
+--#region UI
 local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
 local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
 local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
@@ -72,7 +72,6 @@ local Window = Library:CreateWindow({
     Title = 'Iniuria | v0.1 | alpha'
 })
 
--- legit
 local LegitTab = Window:AddTab('Legit')
 local LegitTabbox1 = LegitTab:AddLeftGroupbox('Aimbot')
 LegitTabbox1:AddSlider('MaxDistance', { Text = "Max Distance", Suffix = "m", Default = 5000, Min = 0, Max = 5000, Rounding = 0})
@@ -92,7 +91,6 @@ LegitTabbox2:AddToggle('VCheck', {Text = 'Visibility Check'})
 LegitTabbox2:AddToggle('TCheck', {Text = 'Team Check'})
 LegitTabbox2:AddToggle('Camera', {Text = 'Disable when using Camera'})
 
--- visual
 local VisualTab = Window:AddTab('Visual')
 local VisualTabbox1 = VisualTab:AddLeftGroupbox('General')
 VisualTabbox1:AddToggle('ESP', {Text = 'ESP enabled'})
@@ -122,8 +120,6 @@ VisualTabbox2:AddLabel('Nonvisible Color'):AddColorPicker('NotvisibleColor', {
 VisualTabbox2:AddSlider('FillOpacity', { Text = "Fill Opacity", Default = 0.5, Min = 0, Max = 1, Rounding = 1})
 VisualTabbox2:AddSlider('OutlineOpacity', { Text = "Outline Opacity", Default = 1, Min = 0, Max = 1, Rounding = 1})
 
-
--- settings
 local SettingsTab = Window:AddTab('Settings')
 local ThemesTabbox = SettingsTab:AddLeftGroupbox('Themes')
 ThemeManager:SetLibrary(Library)
@@ -138,8 +134,8 @@ Library:OnUnload(function()
     Library.Unloaded = true
 end)
 SaveManager:LoadAutoloadConfig()
-
--- functions
+--#endregion
+--#region Aimbot
 local function newDrawing(class_name)
     return function(props)
         local inst = drawlib.new(class_name)
@@ -345,24 +341,6 @@ UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
     end
 end)
 
-local function bypassAC()
-    local gameId = game.GameId
-    if not BypassH4xeye[gameId] then
-        return
-    end
-
-    local oldMethod;
-    oldMethod = hookfunction(Instance.new("RemoteEvent").FireServer, newcclosure(function(event, ...)
-        local args = {...}
-        print(event)
-        for _, v in pairs(args) do
-            print(v)
-        end
-        return oldMethod(event, ...)
-    end))
-end
-bypassAC()
-
 Mouse.Move:Connect(function()
     local target = Mouse.Target
     if target and target.Parent:FindFirstChild("Humanoid") then
@@ -384,8 +362,8 @@ post_sim_loop_name = RunService.PostSimulation:Connect(function(t)
         end
     end
 end)
-
-
+--#endregion
+--#region ESP
 local function AddChar(Char)
     Char:WaitForChild("HumanoidRootPart")
     if Toggles.ESP.Value then
@@ -446,5 +424,6 @@ local function stepped()
         })
     end
 end
+--#endregion
 
 RunService:BindToRenderStep(update_loop_stepped_name, 199, stepped)

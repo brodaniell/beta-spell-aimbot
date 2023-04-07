@@ -7,4 +7,3 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/brodaniell/iniuria/ma
 ```
 
 - UI: Linoria Libary
-- ESP: DendroESP

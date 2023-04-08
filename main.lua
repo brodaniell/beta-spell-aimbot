@@ -79,9 +79,6 @@ LegitTabbox1:AddDivider()
 LegitTabbox1:AddSlider('AimbotAdj', { Text = "Aim Adjustment", Suffix = "%", Default = 50, Min = 0, Max = 100, Rounding = 0})
 LegitTabbox1:AddSlider('AimbotAdjStr', { Text = "Aim Adjustment Strength", Suffix = "x", Default = 5, Min = 0, Max = 5, Rounding = 0})
 LegitTabbox1:AddDivider()
-LegitTabbox1:AddSlider('AimbotOffsetX', { Text = "Aimbot Offset X", Default = 0, Min = -10, Max = 10, Rounding = 0})
-LegitTabbox1:AddSlider('AimbotOffsetY', { Text = "Aimbot Offset Y", Default = 0, Min = -10, Max = 10, Rounding = 0})
-LegitTabbox1:AddDivider()
 LegitTabbox1:AddSlider('Delay', { Text = "Interval", Default = 0.15, Min = 0.025, Max = 1, Rounding = 3})
 LegitTabbox1:AddSlider('Percentage', { Text = "Divider", Default = 1, Min = 1, Max = 100, Rounding = 1})
 
@@ -281,9 +278,7 @@ local function aimbot(t)
         local position, visible = toViewportPoint(closestHitbox.Part.Position)
         if position and canHit(headPos.Position, closestHitbox.Part) and visible and isInsideFOV(position) then
             if hasHealth(target) and not sameTeam(target) then
-                local offsetX = Options.AimbotOffsetX.Value
-                local offsetY = Options.AimbotOffsetY.Value
-                local relativeMousePosition = Vector2.new(position.X + offsetX, position.Y + offsetY) - mousePos
+                local relativeMousePosition = Vector2.new(position.X, position.Y) - mousePos
                 local aimbotStrength = math.clamp(Options.AimbotAdjStr.Value, 0, 10)
                 local aimbotAdjustment = math.clamp(Options.AimbotAdj.Value, 0, 100)
                 local debug = math.clamp(Options.Percentage.Value, 1, 100)
@@ -376,7 +371,6 @@ end
 local function stepped()
     if (tick() - LastTick) > (10 / 1000) then
         LastTick = tick()
-
         removePlayersFromIgnore()
 
         -- fov circle

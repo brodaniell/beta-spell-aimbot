@@ -305,6 +305,8 @@ local function removePlayersFromIgnore()
                 if not isInsideFOV(position) then
                     IgnoredPlayers[v] = nil
                 end
+            else
+                IgnoredPlayers[v] = nil
             end
         else
             IgnoredPlayers[v] = nil
@@ -368,6 +370,16 @@ local function addCharacter(character)
     end
 end
 --#endregion
+
+--#region Bypass AC
+local function hookMeta()
+    local oldHM
+    oldHM = hookmetamethod(game, "__namecall", function(self, ...)
+        if not checkcaller() and getnamecallmethod() == "FireServer" and self.Name:match("H4xeye") then
+            print("Found H4xeye")
+        end
+    end)
+end
 
 --#region RenderStep
 local function stepped()

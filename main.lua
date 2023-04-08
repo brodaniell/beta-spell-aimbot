@@ -384,7 +384,7 @@ local function stepped()
             Thickness = 1,
             Position = UserInputService:GetMouseLocation(),
             Radius = (Options.AimbotFOV.Value * 5),
-            Visible = true,
+            Visible = false,
             instance = "Circle";
         })
     end

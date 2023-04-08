@@ -43,6 +43,7 @@ local StartAim = false
 local Debounce = false
 local CameraLock = false
 local IgnoredPlayers = {}
+local ESPPlayer = {}
 
 -- raycast
 local RaycastParam = RaycastParams.new()
@@ -91,7 +92,9 @@ LegitTabbox2:AddToggle('Camera', {Text = 'Disable when using Camera'})
 
 local VisualTab = Window:AddTab('Visual')
 local VisualTabbox1 = VisualTab:AddLeftGroupbox('General')
-VisualTabbox1:AddToggle('ESP', {Text = 'ESP enabled'})
+VisualTabbox1:AddToggle('ESP', {
+    Text = 'ESP enabled'
+})
 VisualTabbox1:AddDivider()
 VisualTabbox1:AddToggle('Box', {Text = '2D Box'})
 VisualTabbox1:AddToggle('Chams', {Text = 'Chams'})
@@ -249,12 +252,11 @@ local function getClosestObjectFromMouse()
 	return closest
 end
 
-local function getClosestPartFromMouse()
-    local target = getClosestObjectFromMouse().Character
+local function getClosestPartFromMouse(character)
     local mousePos = UserInputService:GetMouseLocation()
     local closest = {Part = nil, Distance = Options.MaxDistance.Value * 2}
-    if not target then return end
-    for _, parts in pairs(target:GetChildren()) do
+    if not character then return end
+    for _, parts in pairs(character:GetChildren()) do
         if not table.find(CharacterParts, parts.Name) then continue end
         local position, _ = toViewportPoint(parts.Position)
         local distance = (mousePos - Vector2.new(position.X, position.Y)).Magnitude
@@ -267,11 +269,12 @@ local function getClosestPartFromMouse()
     return closest
 end
 
-local function aimbot(mouseSens, t)
-    local closestHitbox = getClosestPartFromMouse()
+local function aimbot(t)
     local target = getClosestObjectFromMouse().Character
+    local closestHitbox = getClosestPartFromMouse(target)
     local headPos = getCharacter(LocalPlayer):FindFirstChild("Head") or getCharacter(LocalPlayer):WaitForChild("Head", 1000)
     local mousePos = UserInputService:GetMouseLocation()
+    local mouseSens = UserSettings().GameSettings.MouseSensitivity
     if not headPos then return end
     if not closestHitbox then return end
     if closestHitbox.Part and target and not IgnoredPlayers[target] then
@@ -284,7 +287,9 @@ local function aimbot(mouseSens, t)
                 local aimbotStrength = math.clamp(Options.AimbotAdjStr.Value, 0, 10)
                 local aimbotAdjustment = math.clamp(Options.AimbotAdj.Value, 0, 100)
                 local debug = math.clamp(Options.Percentage.Value, 1, 100)
+                -- 0.20015
                 local stabilize = ((aimbotAdjustment / 100) * (aimbotStrength * 2)) / debug
+                -- 0.5 - 0.2
                 if stabilize <= 0 then return end
                 -- 0.3, 120
                 local endX = (relativeMousePosition.X * stabilize) + (mouseSens * t)
@@ -298,9 +303,9 @@ end
 local function removePlayersFromIgnore()
     -- Character
     for _, v in pairs(IgnoredPlayers) do
-        local hRP = v:FindFirstChild("HumanoidRootPart")
-        if hRP then
-            local position, _ = toViewportPoint(hRP.Position)
+        if v then
+            local closestPart = getClosestPartFromMouse(v)
+            local position, _ = toViewportPoint(closestPart.Part.Position)
             if not isInsideFOV(position) then
                 IgnoredPlayers[v] = nil
             end
@@ -346,7 +351,7 @@ post_sim_loop_name = RunService.PostSimulation:Connect(function(t)
     if StartAim and iswindowactive() and not CameraLock then
         if not Debounce then
             Debounce = true
-            aimbot(UserSettings().GameSettings.MouseSensitivity, t)
+            aimbot(t)
             local delay = math.clamp(Options.Delay.Value, 0.025, 1)
             task.wait(delay)
             Debounce = false
@@ -356,7 +361,15 @@ end)
 --#endregion
 
 --#region ESP
+local function addCharacter(character)
+    if Toggles.ESP.Value then
+        if not ESPPlayer[character] then
+            ESPPlayer[character] = {}
+        end
 
+        
+    end
+end
 --#endregion
 
 --#region RenderStep
@@ -371,7 +384,7 @@ local function stepped()
             Thickness = 1,
             Position = UserInputService:GetMouseLocation(),
             Radius = (Options.AimbotFOV.Value * 5),
-            Visible = false,
+            Visible = true,
             instance = "Circle";
         })
     end

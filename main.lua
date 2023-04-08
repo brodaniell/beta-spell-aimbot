@@ -300,9 +300,11 @@ local function removePlayersFromIgnore()
     for _, v in pairs(IgnoredPlayers) do
         if v then
             local closestPart = getClosestPartFromMouse(v)
-            local position, _ = toViewportPoint(closestPart.Part.Position)
-            if not isInsideFOV(position) then
-                IgnoredPlayers[v] = nil
+            if closestPart and closestPart.Part then
+                local position, _ = toViewportPoint(closestPart.Part.Position)
+                if not isInsideFOV(position) then
+                    IgnoredPlayers[v] = nil
+                end
             end
         else
             IgnoredPlayers[v] = nil
